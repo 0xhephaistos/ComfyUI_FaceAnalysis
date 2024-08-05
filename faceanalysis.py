@@ -12,6 +12,13 @@ try:
 except ImportError:
     pass
 
+IS_MEDIAPIPE_INSTALLED = False
+try:
+    import mediapipe as mp
+    IS_MEDIAPIPE_INSTALLED = True
+except ImportError:
+    pass
+
 if not IS_DLIB_INSTALLED and not IS_INSIGHTFACE_INSTALLED:
     raise Exception("Please install either dlib or insightface to use this node.")
 
@@ -23,7 +30,6 @@ import os
 import folder_paths
 import numpy as np
 import cv2
-import mediapipe as mp
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 DLIB_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "dlib")
