@@ -46,6 +46,7 @@ THRESHOLDS = { # from DeepFace
         "DeepFace": {"cosine": 0.23, "euclidean": 64, "L2_norm": 0.64},
         "DeepID": {"cosine": 0.015, "euclidean": 45, "L2_norm": 0.17},
         "GhostFaceNet": {"cosine": 0.65, "euclidean": 35.71, "L2_norm": 1.10},
+        "MediaPipe": {"cosine": 0.01, "euclidean": 0.01, "L2_norm": 0.01},
     }
 
 def tensor_to_image(image):
