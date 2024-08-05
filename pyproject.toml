@@ -1,15 +1,15 @@
 [project]
-name = "comfyui_faceanalysis"
+name = "comfyui_faceanalysis_custom"
 description = "This extension uses DLib or InsightFace to calculate the vicinity between two faces and to perform other operation on faces."
 version = "1.0.0"
 license = "LICENSE"
-dependencies = ["dlib", "onnxruntime", "insightface", "color_matcher"]
+dependencies = ["dlib", "onnxruntime", "insightface", "color_matcher","mediapipe"]
 
 [project.urls]
-Repository = "https://github.com/cubiq/ComfyUI_FaceAnalysis"
+Repository = "https://github.com/0xhephaistos/ComfyUI_FaceAnalysis"
 #  Used by Comfy Registry https://comfyregistry.org
 
 [tool.comfy]
 PublisherId = "matteo"
-DisplayName = "ComfyUI_FaceAnalysis"
+DisplayName = "ComfyUI_FaceAnalysis_Custom"
 Icon = ""
