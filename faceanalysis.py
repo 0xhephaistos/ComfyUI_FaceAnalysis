@@ -371,6 +371,8 @@ class FaceAnalysisModels:
             libraries.append("insightface")
         if IS_DLIB_INSTALLED:
             libraries.append("dlib")
+        if IS_MEDIAPIPE_INSTALLED:
+            libraries.append("mediapipe")
 
         return {"required": {
             "library": (libraries, ),
@@ -386,6 +388,8 @@ class FaceAnalysisModels:
 
         if library == "insightface":
             out = InsightFace(provider)
+        elif library == "mediapipe":
+            out = MediaPipe()
         else:
             out = DLib()
 
