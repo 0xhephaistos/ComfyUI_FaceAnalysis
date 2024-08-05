@@ -22,6 +22,8 @@ from comfy.utils import ProgressBar
 import os
 import folder_paths
 import numpy as np
+import cv2
+import mediapipe as mp
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 DLIB_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "dlib")
@@ -268,6 +270,92 @@ class DLib:
             return [landmarks, main_features, eyes, left_eye, right_eye, nose, mouth, left_brow, right_brow, outline, outline_forehead]
         return None
 
+class MediaPipe:
+    def __init__(self):
+        self.mp_face_detection = mp.solutions.face_detection
+        self.mp_face_mesh = mp.solutions.face_mesh
+        self.face_detection = self.mp_face_detection.FaceDetection(min_detection_confidence=0.5)
+        self.face_mesh = self.mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5)
+        self.thresholds = THRESHOLDS["MediaPipe"]  # Assuming THRESHOLDS is defined elsewhere
+
+    def get_face(self, image):
+        image_rgb = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
+        results = self.face_detection.process(image_rgb)
+        if results.detections:
+            return sorted(results.detections, key=lambda x: x.location_data.relative_bounding_box.area, reverse=True)
+        return None
+
+    def get_embeds(self, image):
+        image_rgb = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
+        results = self.face_mesh.process(image_rgb)
+        if results.multi_face_landmarks:
+            # MediaPipe doesn't provide face embeddings directly, so we'll use landmark coordinates as a simple substitute
+            face_landmarks = results.multi_face_landmarks[0].landmark
+            return np.array([(landmark.x, landmark.y, landmark.z) for landmark in face_landmarks]).flatten()
+        return None
+
+    def get_bbox(self, image, padding=0, padding_percent=0):
+        faces = self.get_face(image)
+        img = []
+        x = []
+        y = []
+        w = []
+        h = []
+        if faces:
+            for face in faces:
+                bbox = face.location_data.relative_bounding_box
+                ih, iw, _ = image.shape
+                x1 = max(0, int(bbox.xmin * iw) - int(bbox.width * iw * padding_percent) - padding)
+                y1 = max(0, int(bbox.ymin * ih) - int(bbox.height * ih * padding_percent) - padding)
+                x2 = min(iw, int((bbox.xmin + bbox.width) * iw) + int(bbox.width * iw * padding_percent) + padding)
+                y2 = min(ih, int((bbox.ymin + bbox.height) * ih) + int(bbox.height * ih * padding_percent) + padding)
+                crop = image[y1:y2, x1:x2]
+                img.append(T.ToTensor()(crop).permute(1, 2, 0).unsqueeze(0))
+                x.append(x1)
+                y.append(y1)
+                w.append(x2 - x1)
+                h.append(y2 - y1)
+        return (img, x, y, w, h)
+
+    def get_keypoints(self, image):
+        image_rgb = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
+        results = self.face_mesh.process(image_rgb)
+        if results.multi_face_landmarks:
+            face_landmarks = results.multi_face_landmarks[0].landmark
+            ih, iw, _ = image.shape
+            left_eye = [(face_landmarks[33].x * iw + face_landmarks[133].x * iw) // 2, 
+                        (face_landmarks[33].y * ih + face_landmarks[133].y * ih) // 2]
+            right_eye = [(face_landmarks[362].x * iw + face_landmarks[263].x * iw) // 2, 
+                         (face_landmarks[362].y * ih + face_landmarks[263].y * ih) // 2]
+            nose = [face_landmarks[4].x * iw, face_landmarks[4].y * ih]
+            return [left_eye, right_eye, nose]
+        return None
+
+    def get_landmarks(self, image, extended_landmarks=False):
+        image_rgb = cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
+        results = self.face_mesh.process(image_rgb)
+        if results.multi_face_landmarks:
+            face_landmarks = results.multi_face_landmarks[0].landmark
+            ih, iw, _ = image.shape
+            landmarks = np.array([[l.x * iw, l.y * ih] for l in face_landmarks])
+            
+            main_features = landmarks[17:68]
+            left_eye = landmarks[42:48]
+            right_eye = landmarks[36:42]
+            eyes = landmarks[36:48]
+            nose = landmarks[27:36]
+            mouth = landmarks[48:68]
+            left_brow = landmarks[17:22]
+            right_brow = landmarks[22:27]
+            outline = landmarks[[*range(17), *range(26,16,-1)]]
+            
+            if extended_landmarks:
+                outline_forehead = landmarks  # MediaPipe provides 468 landmarks, so we use all for extended
+            else:
+                outline_forehead = outline
+
+            return [landmarks, main_features, eyes, left_eye, right_eye, nose, mouth, left_brow, right_brow, outline, outline_forehead]
+        return None
 
 class FaceAnalysisModels:
     @classmethod
